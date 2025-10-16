@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Lock, Unlock, Heart, Instagram, MessageCircle, Mail, Music } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,6 +11,8 @@ interface Location {
   color: string;
   isUnlocked: boolean;
   message: string;
+  secretPhrase: string;
+  hint: string;
 }
 
 interface TreasureMapProps {
@@ -25,6 +28,8 @@ const TreasureMap = ({ onComplete }: TreasureMapProps) => {
       color: "from-pink-500 to-purple-600",
       isUnlocked: false,
       message: "كل صورة نشرتها كانت تضيء يومي... 📸\nأنتِ أجمل ما في حياتي ✨",
+      secretPhrase: "أنتِ نور حياتي",
+      hint: "ابحثي في آخر منشور لي على Instagram... 📸",
     },
     {
       id: 2,
@@ -33,6 +38,8 @@ const TreasureMap = ({ onComplete }: TreasureMapProps) => {
       color: "from-green-500 to-emerald-600",
       isUnlocked: false,
       message: "كل رسالة منك تجعل قلبي ينبض بسعادة 💚\nكلماتك تعني لي العالم 🌍",
+      secretPhrase: "قلبي ينبض لكِ",
+      hint: "انظري في وصف حالتي على WhatsApp... 💚",
     },
     {
       id: 3,
@@ -41,6 +48,8 @@ const TreasureMap = ({ onComplete }: TreasureMapProps) => {
       color: "from-red-500 to-orange-600",
       isUnlocked: false,
       message: "حتى في الرسائل الرسمية، كنتِ دائماً في تفكيري 💌\nكل تفصيلة تذكرني بكِ ❤️",
+      secretPhrase: "حبيبة قلبي",
+      hint: "تفقدي توقيعي في Gmail... 💌",
     },
     {
       id: 4,
@@ -49,22 +58,38 @@ const TreasureMap = ({ onComplete }: TreasureMapProps) => {
       color: "from-green-400 to-green-700",
       isUnlocked: false,
       message: "كل أغنية استمعت لها كانت تحكي قصتنا 🎵\nأنتِ اللحن الأجمل في حياتي 🎶",
+      secretPhrase: "لحن الحب",
+      hint: "شاهدي اسم قائمة التشغيل المفضلة لي على Spotify... 🎵",
     },
   ]);
 
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [showMessage, setShowMessage] = useState(false);
+  const [showPhraseInput, setShowPhraseInput] = useState(false);
+  const [userInput, setUserInput] = useState("");
 
   const handleLocationClick = (location: Location) => {
     if (!location.isUnlocked) {
+      setSelectedLocation(location);
+      setShowPhraseInput(true);
+      setUserInput("");
+    }
+  };
+
+  const handlePhraseSubmit = () => {
+    if (!selectedLocation) return;
+    
+    if (userInput.trim().toLowerCase() === selectedLocation.secretPhrase.toLowerCase()) {
       setLocations((prev) =>
         prev.map((loc) =>
-          loc.id === location.id ? { ...loc, isUnlocked: true } : loc
+          loc.id === selectedLocation.id ? { ...loc, isUnlocked: true } : loc
         )
       );
-      setSelectedLocation(location);
+      setShowPhraseInput(false);
       setShowMessage(true);
-      toast.success(`اكتشفتِ رسالة في ${location.name}! 💝`);
+      toast.success(`اكتشفتِ رسالة في ${selectedLocation.name}! 💝`);
+    } else {
+      toast.error("الجملة غير صحيحة! حاولي مرة أخرى 🔒");
     }
   };
 
@@ -73,6 +98,12 @@ const TreasureMap = ({ onComplete }: TreasureMapProps) => {
   const closeMessage = () => {
     setShowMessage(false);
     setSelectedLocation(null);
+  };
+
+  const closePhraseInput = () => {
+    setShowPhraseInput(false);
+    setSelectedLocation(null);
+    setUserInput("");
   };
 
   return (
@@ -131,6 +162,54 @@ const TreasureMap = ({ onComplete }: TreasureMapProps) => {
           <Heart className="ml-2" fill="currentColor" />
           اكتشفي الهدية النهائية! 🎁
         </Button>
+      )}
+
+      {/* Phrase input modal */}
+      {showPhraseInput && selectedLocation && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 animate-fade-in">
+          <div className="bg-card p-8 rounded-3xl shadow-magical max-w-lg border-2 border-primary/20 space-y-6">
+            <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${selectedLocation.color}`}>
+              {(() => {
+                const Icon = selectedLocation.icon;
+                return <Icon className="w-10 h-10 text-white" />;
+              })()}
+            </div>
+            <h3 className="text-2xl font-bold text-card-foreground">
+              🔒 {selectedLocation.name}
+            </h3>
+            <p className="text-lg leading-relaxed text-card-foreground">
+              {selectedLocation.hint}
+            </p>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                اكتبي الجملة السرية التي وجدتيها:
+              </p>
+              <Textarea
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                placeholder="اكتبي الجملة هنا..."
+                className="min-h-[100px] text-lg"
+                dir="rtl"
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button
+                onClick={handlePhraseSubmit}
+                className="flex-1 bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90"
+              >
+                <Unlock className="ml-2" />
+                تحقق
+              </Button>
+              <Button
+                onClick={closePhraseInput}
+                variant="outline"
+                className="flex-1"
+              >
+                إلغاء
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Message modal */}
