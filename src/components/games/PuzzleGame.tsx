@@ -12,7 +12,7 @@ const PuzzleGame = ({ onComplete }: PuzzleGameProps) => {
   const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
 
   useEffect(() => {
-    const shuffled = [0, 1, 2, 3, 4, 5, 6, 7, 8].sort(() => Math.random() - 0.5);
+    const shuffled = Array.from({ length: 16 }, (_, i) => i).sort(() => Math.random() - 0.5);
     setPieces(shuffled);
   }, []);
 
@@ -42,14 +42,14 @@ const PuzzleGame = ({ onComplete }: PuzzleGameProps) => {
     <div className="min-h-screen flex flex-col items-center justify-center p-6">
       <div className="text-center space-y-6 mb-8">
         <h2 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          لغز القلوب 💝
+          لغز الأرقام 🔢
         </h2>
         <p className="text-lg text-muted-foreground">
-          رتبي القطع بالترتيب الصحيح (من 1 إلى 9)
+          رتبي الأرقام بالترتيب الصحيح (من 1 إلى 16)
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 max-w-md mb-8">
+      <div className="grid grid-cols-4 gap-3 max-w-lg mb-8">
         {pieces.map((piece, index) => (
           <button
             key={index}

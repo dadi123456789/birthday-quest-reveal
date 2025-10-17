@@ -1,14 +1,20 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Heart, Sparkles, Star, Gift } from "lucide-react";
+import { Heart, Sparkles, Star, Gift, Sun, Moon, Cloud, Zap, Music, Camera, Trophy, Crown, Flame, Gem, Rocket, Coffee } from "lucide-react";
 import { toast } from "sonner";
 
 interface MemoryGameProps {
   onComplete: () => void;
 }
 
-const icons = [Heart, Sparkles, Star, Gift];
-const colors = ["text-primary", "text-secondary", "text-accent", "text-pink-500"];
+const icons = [Heart, Sparkles, Star, Gift, Sun, Moon, Cloud, Zap, Music, Camera, Trophy, Crown, Flame, Gem, Rocket, Coffee, Trophy, Crown];
+const colors = [
+  "text-primary", "text-secondary", "text-accent", "text-pink-500",
+  "text-purple-500", "text-blue-500", "text-green-500", "text-yellow-500",
+  "text-orange-500", "text-red-500", "text-indigo-500", "text-teal-500",
+  "text-cyan-500", "text-rose-500", "text-fuchsia-500", "text-lime-500",
+  "text-amber-500", "text-emerald-500"
+];
 
 interface Card {
   id: number;
@@ -116,7 +122,7 @@ const MemoryGame = ({ onComplete }: MemoryGameProps) => {
         </p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 max-w-lg mb-8">
+      <div className="grid grid-cols-6 gap-3 max-w-3xl mb-8">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
@@ -142,14 +148,14 @@ const MemoryGame = ({ onComplete }: MemoryGameProps) => {
       </div>
 
       {allMatched && (
-        <Button
-          onClick={onComplete}
-          size="lg"
-          className="shine bg-gradient-to-r from-primary to-secondary text-white px-10 py-6 text-lg rounded-2xl shadow-magical hover:scale-105 transition-all animate-fade-in"
-        >
-          <Heart className="ml-2" fill="currentColor" />
-          التالي
-        </Button>
+          <Button
+            onClick={onComplete}
+            size="lg"
+            className="shine bg-gradient-to-r from-primary to-secondary text-white px-10 py-6 text-lg rounded-2xl shadow-magical hover:scale-105 transition-all animate-fade-in"
+          >
+            <Heart className="ml-2" fill="currentColor" />
+            التالي
+          </Button>
       )}
     </div>
   );
