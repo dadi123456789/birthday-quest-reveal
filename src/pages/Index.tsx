@@ -4,15 +4,24 @@ import MessageScreen from "./MessageScreen";
 import MemoryGame from "@/components/games/MemoryGame";
 import PuzzleGame from "@/components/games/PuzzleGame";
 import QuizGame from "@/components/games/QuizGame";
+import WordArrangementGame from "@/components/games/WordArrangementGame";
+import ColorMatchingGame from "@/components/games/ColorMatchingGame";
+import SequenceGame from "@/components/games/SequenceGame";
+import MathPuzzleGame from "@/components/games/MathPuzzleGame";
+import PatternRecognitionGame from "@/components/games/PatternRecognitionGame";
 import GiftBox from "./GiftBox";
 import TreasureMap from "./TreasureMap";
 import FinalGift from "./FinalGift";
 
 const messages = [
-  "في هذه الحياة، نلتقي بأشخاص يتركون أثراً جميلاً في ذاكرتنا ✨\nوأنتِ واحدة من هؤلاء الأشخاص الذين جعلوا الأيام أكثر إشراقاً 🌟",
-  "الحياة مليئة بالمفاجآت الجميلة 🎭\nوكل لحظة تمر هي فرصة لاكتشاف شيء جديد ورائع! استمري في التألق 💫",
-  "النجاح لا يُقاس بالوصول إلى النهاية، بل بالاستمتاع بالرحلة 🌈\nوأنتِ تقومين بعمل رائع حتى الآن! استمري وأبهري الجميع 🎯",
-  "هل تعلمين أن أفضل الهدايا هي تلك التي تأتي من القلب؟ 🎁\nحسناً... لقد حان الوقت لتكتشفي ما تم إعداده خصيصاً لكِ! 🌟",
+  "في عالم مليء بالوجوه، هناك وجوه تترك بصمة لا تُمحى ✨\nوأنتِ من تلك الوجوه التي أضاءت الدرب بطريقة ساحرة 🌟",
+  "كل يوم هو صفحة جديدة في كتاب الحياة 📖\nوأنتِ تكتبين أجمل الفصول بابتسامتك وروحك المميزة 💫",
+  "الجمال الحقيقي ليس في الظاهر فقط، بل في القلب والروح 💎\nوأنتِ تمتلكين من كليهما ما يجعلك استثنائية بكل معنى الكلمة ✨",
+  "في زحمة الحياة، نادراً ما نلتقي بأشخاص حقيقيين 🌸\nوأنتِ من أولئك النادرين الذين يستحقون كل التقدير والاحترام 🎭",
+  "الذكريات الجميلة هي كنوز نحتفظ بها في القلب 🏆\nوكل لحظة قضيتها معك كانت إضافة قيّمة لهذا الكنز الثمين 💝",
+  "القوة الحقيقية تكمن في البقاء صادقاً مع نفسك 🦋\nوأنتِ تملكين هذه القوة بشكل يثير الإعجاب والإلهام 🌈",
+  "في عالم يتغير باستمرار، الثابت الوحيد هو الأثر الذي نتركه 🌠\nوأنتِ تتركين أثراً جميلاً أينما ذهبتِ وفي كل من تلقينه 🎪",
+  "الحياة ليست مجرد أيام تمر، بل لحظات نعيشها بصدق 🎨\nوكل لحظة معك كانت لوحة فنية رائعة الجمال 🖼️",
 ];
 
 type Stage =
@@ -24,6 +33,16 @@ type Stage =
   | "message3"
   | "game3"
   | "message4"
+  | "game4"
+  | "message5"
+  | "game5"
+  | "message6"
+  | "game6"
+  | "message7"
+  | "game7"
+  | "message8"
+  | "game8"
+  | "message9"
   | "giftbox"
   | "treasuremap"
   | "finalgift";
@@ -41,6 +60,16 @@ const Index = () => {
       "message3",
       "game3",
       "message4",
+      "game4",
+      "message5",
+      "game5",
+      "message6",
+      "game6",
+      "message7",
+      "game7",
+      "message8",
+      "game8",
+      "message9",
       "giftbox",
       "treasuremap",
       "finalgift",
@@ -68,6 +97,26 @@ const Index = () => {
       {currentStage === "game3" && <QuizGame onComplete={nextStage} />}
       {currentStage === "message4" && (
         <MessageScreen message={messages[3]} onContinue={nextStage} />
+      )}
+      {currentStage === "game4" && <WordArrangementGame onComplete={nextStage} />}
+      {currentStage === "message5" && (
+        <MessageScreen message={messages[4]} onContinue={nextStage} />
+      )}
+      {currentStage === "game5" && <ColorMatchingGame onComplete={nextStage} />}
+      {currentStage === "message6" && (
+        <MessageScreen message={messages[5]} onContinue={nextStage} />
+      )}
+      {currentStage === "game6" && <SequenceGame onComplete={nextStage} />}
+      {currentStage === "message7" && (
+        <MessageScreen message={messages[6]} onContinue={nextStage} />
+      )}
+      {currentStage === "game7" && <MathPuzzleGame onComplete={nextStage} />}
+      {currentStage === "message8" && (
+        <MessageScreen message={messages[7]} onContinue={nextStage} />
+      )}
+      {currentStage === "game8" && <PatternRecognitionGame onComplete={nextStage} />}
+      {currentStage === "message9" && (
+        <MessageScreen message={messages[7]} onContinue={nextStage} />
       )}
       {currentStage === "giftbox" && <GiftBox onUnlock={nextStage} />}
       {currentStage === "treasuremap" && <TreasureMap onComplete={nextStage} />}
