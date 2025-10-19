@@ -5,7 +5,7 @@ import MemoryGame from "@/components/games/MemoryGame";
 import PuzzleGame from "@/components/games/PuzzleGame";
 import QuizGame from "@/components/games/QuizGame";
 import WordArrangementGame from "@/components/games/WordArrangementGame";
-import ColorMatchingGame from "@/components/games/ColorMatchingGame";
+import EventOrderingGame from "@/components/games/EventOrderingGame";
 import SequenceGame from "@/components/games/SequenceGame";
 import MathPuzzleGame from "@/components/games/MathPuzzleGame";
 import PatternRecognitionGame from "@/components/games/PatternRecognitionGame";
@@ -102,7 +102,7 @@ const Index = () => {
       {currentStage === "message5" && (
         <MessageScreen message={messages[4]} onContinue={nextStage} />
       )}
-      {currentStage === "game5" && <ColorMatchingGame onComplete={nextStage} />}
+      {currentStage === "game5" && <EventOrderingGame onComplete={nextStage} />}
       {currentStage === "message6" && (
         <MessageScreen message={messages[5]} onContinue={nextStage} />
       )}
