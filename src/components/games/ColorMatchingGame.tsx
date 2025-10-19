@@ -34,7 +34,13 @@ const ColorMatchingGame = ({ onComplete }: ColorMatchingGameProps) => {
     
     setDisplayedColor(colorForDisplay);
     setDisplayedText(textToShow.arabic);
-    setOptions([...colors].sort(() => Math.random() - 0.5).slice(0, 3));
+    
+    // التأكد من أن اللون الصحيح موجود في الخيارات
+    const otherColors = colors.filter(c => c.hex !== colorForDisplay.hex);
+    const randomOthers = [...otherColors].sort(() => Math.random() - 0.5).slice(0, 2);
+    const allOptions = [colorForDisplay, ...randomOthers].sort(() => Math.random() - 0.5);
+    
+    setOptions(allOptions);
   };
 
   const handleAnswer = (selectedColor: typeof colors[0]) => {
