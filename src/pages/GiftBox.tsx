@@ -2,9 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Gift, Camera, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
-import '@tensorflow/tfjs-core';
-import '@tensorflow/tfjs-backend-webgl';
+import * as faceapi from 'face-api.js';
 
 interface GiftBoxProps {
   onUnlock: () => void;
@@ -16,8 +14,9 @@ const GiftBox = ({ onUnlock }: GiftBoxProps) => {
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectionMessage, setDetectionMessage] = useState("ابتسمي من القلب... 💕");
   const videoRef = useRef<HTMLVideoElement>(null);
-  const detectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
+  const modelsLoadedRef = useRef(false);
 
   const handleBoxClick = () => {
     if (isLocked) {
@@ -27,73 +26,60 @@ const GiftBox = ({ onUnlock }: GiftBoxProps) => {
     }
   };
 
-  const detectSmile = (face: any) => {
+  const loadModels = async () => {
+    if (modelsLoadedRef.current) return;
+    
     try {
-      const keypoints = face.keypoints;
+      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
       
-      // نقاط الشفاه العلوية والسفلية
-      const upperLip = keypoints[13]; // نقطة الشفة العلوية الوسطى
-      const lowerLip = keypoints[14]; // نقطة الشفة السفلية الوسطى
-      const leftMouth = keypoints[61]; // زاوية الفم اليسرى
-      const rightMouth = keypoints[291]; // زاوية الفم اليمنى
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+      ]);
       
-      // حساب المسافة العمودية بين الشفاه
-      const lipDistance = Math.abs(upperLip.y - lowerLip.y);
-      
-      // حساب عرض الفم
-      const mouthWidth = Math.abs(leftMouth.x - rightMouth.x);
-      
-      // الابتسامة تكون عندما يكون الفم عريضاً والشفاه قريبة من بعضها
-      const smileRatio = mouthWidth / lipDistance;
-      
-      // إذا كان النسبة أكبر من 6، يعني هناك ابتسامة
-      return smileRatio > 6;
+      modelsLoadedRef.current = true;
     } catch (error) {
-      return false;
+      console.error("Error loading models:", error);
+      throw error;
     }
   };
 
-  const startDetection = async () => {
-    if (!videoRef.current) return;
+  const detectSmile = async () => {
+    if (!videoRef.current || !canvasRef.current || !showCamera) return;
     
-    const detect = async () => {
-      if (!videoRef.current || !detectorRef.current || !showCamera) return;
+    try {
+      const detections = await faceapi
+        .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+        .withFaceExpressions();
       
-      try {
-        const faces = await detectorRef.current.estimateFaces(videoRef.current, {
-          flipHorizontal: false,
-        });
+      if (detections && detections.length > 0) {
+        const expressions = detections[0].expressions;
         
-        if (faces.length > 0) {
-          setDetectionMessage("رائع! أراك... الآن ابتسمي! 😊");
+        setDetectionMessage("رائع! أراك... الآن ابتسمي! 😊");
+        
+        // التحقق من الابتسامة (happy expression)
+        if (expressions.happy > 0.7) {
+          setDetectionMessage("ابتسامة جميلة! 🌟");
           
-          const isSmiling = detectSmile(faces[0]);
+          // انتظر قليلاً للتأكد
+          setTimeout(() => {
+            toast.success("رأيت ابتسامتك الجميلة! 😊");
+            stopCamera();
+            setIsLocked(false);
+            setTimeout(onUnlock, 1000);
+          }, 800);
           
-          if (isSmiling) {
-            setDetectionMessage("ابتسامة جميلة! 🌟");
-            
-            // انتظر ثانية للتأكد من الابتسامة
-            setTimeout(() => {
-              toast.success("رأيت ابتسامتك الجميلة! 😊");
-              stopCamera();
-              setIsLocked(false);
-              setTimeout(onUnlock, 1000);
-            }, 1000);
-            
-            return;
-          }
-        } else {
-          setDetectionMessage("من فضلك، انظري للكاميرا 👀");
+          return;
         }
-        
-        animationFrameRef.current = requestAnimationFrame(detect);
-      } catch (error) {
-        console.error("Error detecting:", error);
-        animationFrameRef.current = requestAnimationFrame(detect);
+      } else {
+        setDetectionMessage("من فضلك، انظري للكاميرا 👀");
       }
-    };
-    
-    detect();
+      
+      animationFrameRef.current = requestAnimationFrame(detectSmile);
+    } catch (error) {
+      console.error("Error detecting:", error);
+      animationFrameRef.current = requestAnimationFrame(detectSmile);
+    }
   };
 
   const stopCamera = () => {
@@ -111,10 +97,15 @@ const GiftBox = ({ onUnlock }: GiftBoxProps) => {
   const handleSmileAttempt = async () => {
     setShowCamera(true);
     setIsDetecting(true);
-    setDetectionMessage("جاري تحميل كاشف الابتسامة... ⏳");
+    setDetectionMessage("جاري التحضير... ⏳");
     
     try {
+      // تحميل النماذج أولاً
+      setDetectionMessage("جاري تحميل كاشف الابتسامة... 🤖");
+      await loadModels();
+      
       // تشغيل الكاميرا
+      setDetectionMessage("جاري تشغيل الكاميرا... 📷");
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           width: 640, 
@@ -133,23 +124,15 @@ const GiftBox = ({ onUnlock }: GiftBoxProps) => {
           }
         });
         
-        setDetectionMessage("جاري تحميل نموذج الكشف... 🤖");
+        await videoRef.current.play();
         
-        // تحميل نموذج كشف الوجه
-        const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
-        const detectorConfig: faceLandmarksDetection.MediaPipeFaceMeshMediaPipeModelConfig = {
-          runtime: 'mediapipe',
-          solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
-          refineLandmarks: true,
-        };
-        
-        detectorRef.current = await faceLandmarksDetection.createDetector(model, detectorConfig);
-        
-        setDetectionMessage("جاهز! انظري للكاميرا... 👀");
+        setDetectionMessage("جاهز! انظري للكاميرا وابتسمي... 👀✨");
         setIsDetecting(false);
         
-        // بدء الكشف
-        startDetection();
+        // بدء الكشف بعد ثانية
+        setTimeout(() => {
+          detectSmile();
+        }, 1000);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -243,13 +226,20 @@ const GiftBox = ({ onUnlock }: GiftBoxProps) => {
         {showCamera && (
           <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
             <div className="space-y-6 text-center">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full max-w-2xl h-auto object-cover rounded-3xl shadow-magical border-4 border-primary"
-              />
+              <div className="relative">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full max-w-2xl h-auto object-cover rounded-3xl shadow-magical border-4 border-primary"
+                />
+                <canvas
+                  ref={canvasRef}
+                  className="absolute top-0 left-0 w-full h-full"
+                  style={{ display: 'none' }}
+                />
+              </div>
               
               <div className="space-y-4">
                 <p className="text-white text-2xl font-bold flex items-center justify-center gap-2">
