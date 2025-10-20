@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Gift, Camera, Hand, Heart, Sparkles } from "lucide-react";
+import { Gift, Camera, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
+import '@tensorflow/tfjs-core';
+import '@tensorflow/tfjs-backend-webgl';
 
 interface GiftBoxProps {
   onUnlock: () => void;
@@ -10,9 +13,11 @@ interface GiftBoxProps {
 const GiftBox = ({ onUnlock }: GiftBoxProps) => {
   const [isLocked, setIsLocked] = useState(true);
   const [showCamera, setShowCamera] = useState(false);
-  const [showTouch, setShowTouch] = useState(false);
-  const [touchProgress, setTouchProgress] = useState(0);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectionMessage, setDetectionMessage] = useState("ابتسمي من القلب... 💕");
   const videoRef = useRef<HTMLVideoElement>(null);
+  const detectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
+  const animationFrameRef = useRef<number>();
 
   const handleBoxClick = () => {
     if (isLocked) {
@@ -22,55 +27,142 @@ const GiftBox = ({ onUnlock }: GiftBoxProps) => {
     }
   };
 
-  const handleSmileAttempt = async () => {
-    setShowCamera(true);
+  const detectSmile = (face: any) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
+      const keypoints = face.keypoints;
       
-      setTimeout(() => {
-        toast.success("رأيت ابتسامتك الجميلة! 😊");
-        if (videoRef.current?.srcObject) {
-          const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-          tracks.forEach((track) => track.stop());
-        }
-        setShowCamera(false);
-        setIsLocked(false);
-        setTimeout(onUnlock, 1000);
-      }, 3000);
+      // نقاط الشفاه العلوية والسفلية
+      const upperLip = keypoints[13]; // نقطة الشفة العلوية الوسطى
+      const lowerLip = keypoints[14]; // نقطة الشفة السفلية الوسطى
+      const leftMouth = keypoints[61]; // زاوية الفم اليسرى
+      const rightMouth = keypoints[291]; // زاوية الفم اليمنى
+      
+      // حساب المسافة العمودية بين الشفاه
+      const lipDistance = Math.abs(upperLip.y - lowerLip.y);
+      
+      // حساب عرض الفم
+      const mouthWidth = Math.abs(leftMouth.x - rightMouth.x);
+      
+      // الابتسامة تكون عندما يكون الفم عريضاً والشفاه قريبة من بعضها
+      const smileRatio = mouthWidth / lipDistance;
+      
+      // إذا كان النسبة أكبر من 6، يعني هناك ابتسامة
+      return smileRatio > 6;
     } catch (error) {
-      toast.error("لم نستطع الوصول للكاميرا، جربي اللمسة السحرية! 💫");
-      setShowCamera(false);
-      setShowTouch(true);
+      return false;
     }
   };
 
-  const handleTouch = () => {
-    setShowTouch(true);
-    setTouchProgress(0);
+  const startDetection = async () => {
+    if (!videoRef.current) return;
+    
+    const detect = async () => {
+      if (!videoRef.current || !detectorRef.current || !showCamera) return;
+      
+      try {
+        const faces = await detectorRef.current.estimateFaces(videoRef.current, {
+          flipHorizontal: false,
+        });
+        
+        if (faces.length > 0) {
+          setDetectionMessage("رائع! أراك... الآن ابتسمي! 😊");
+          
+          const isSmiling = detectSmile(faces[0]);
+          
+          if (isSmiling) {
+            setDetectionMessage("ابتسامة جميلة! 🌟");
+            
+            // انتظر ثانية للتأكد من الابتسامة
+            setTimeout(() => {
+              toast.success("رأيت ابتسامتك الجميلة! 😊");
+              stopCamera();
+              setIsLocked(false);
+              setTimeout(onUnlock, 1000);
+            }, 1000);
+            
+            return;
+          }
+        } else {
+          setDetectionMessage("من فضلك، انظري للكاميرا 👀");
+        }
+        
+        animationFrameRef.current = requestAnimationFrame(detect);
+      } catch (error) {
+        console.error("Error detecting:", error);
+        animationFrameRef.current = requestAnimationFrame(detect);
+      }
+    };
+    
+    detect();
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach((track) => track.stop());
+    }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    setShowCamera(false);
+    setIsDetecting(false);
+  };
+
+  const handleSmileAttempt = async () => {
+    setShowCamera(true);
+    setIsDetecting(true);
+    setDetectionMessage("جاري تحميل كاشف الابتسامة... ⏳");
+    
+    try {
+      // تشغيل الكاميرا
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: 640, 
+          height: 480,
+          facingMode: 'user'
+        } 
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        
+        // انتظار تحميل الفيديو
+        await new Promise((resolve) => {
+          if (videoRef.current) {
+            videoRef.current.onloadedmetadata = resolve;
+          }
+        });
+        
+        setDetectionMessage("جاري تحميل نموذج الكشف... 🤖");
+        
+        // تحميل نموذج كشف الوجه
+        const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
+        const detectorConfig: faceLandmarksDetection.MediaPipeFaceMeshMediaPipeModelConfig = {
+          runtime: 'mediapipe',
+          solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
+          refineLandmarks: true,
+        };
+        
+        detectorRef.current = await faceLandmarksDetection.createDetector(model, detectorConfig);
+        
+        setDetectionMessage("جاهز! انظري للكاميرا... 👀");
+        setIsDetecting(false);
+        
+        // بدء الكشف
+        startDetection();
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("لم نستطع الوصول للكاميرا! تأكدي من منح الإذن 📷");
+      stopCamera();
+    }
   };
 
   useEffect(() => {
-    if (showTouch && touchProgress < 100) {
-      const interval = setInterval(() => {
-        setTouchProgress((prev) => {
-          const next = prev + 2;
-          if (next >= 100) {
-            clearInterval(interval);
-            setTimeout(() => {
-              toast.success("أحسستُ بصدق قلبك! 💗");
-              setIsLocked(false);
-              setTimeout(onUnlock, 1000);
-            }, 500);
-          }
-          return next;
-        });
-      }, 50);
-      return () => clearInterval(interval);
-    }
-  }, [showTouch, touchProgress, onUnlock]);
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -133,24 +225,15 @@ const GiftBox = ({ onUnlock }: GiftBoxProps) => {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex justify-center">
               <Button
                 onClick={handleSmileAttempt}
                 size="lg"
+                disabled={showCamera}
                 className="shine bg-gradient-to-r from-primary to-secondary text-white px-8 py-6 text-lg rounded-2xl shadow-magical hover:scale-105 transition-all"
               >
                 <Camera className="ml-2" />
                 ابتسمي للكاميرا 😊
-              </Button>
-
-              <Button
-                onClick={handleTouch}
-                size="lg"
-                variant="outline"
-                className="border-2 border-primary hover:bg-primary/10 px-8 py-6 text-lg rounded-2xl shadow-magical hover:scale-105 transition-all"
-              >
-                <Hand className="ml-2" />
-                اللمسة السحرية ✋
               </Button>
             </div>
           </div>
@@ -158,44 +241,29 @@ const GiftBox = ({ onUnlock }: GiftBoxProps) => {
 
         {/* Camera view */}
         {showCamera && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
             <div className="space-y-6 text-center">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
-                className="w-96 h-96 object-cover rounded-3xl shadow-magical border-4 border-primary"
+                muted
+                className="w-full max-w-2xl h-auto object-cover rounded-3xl shadow-magical border-4 border-primary"
               />
-              <p className="text-white text-xl">ابتسمي من القلب... 💕</p>
-            </div>
-          </div>
-        )}
-
-        {/* Touch progress */}
-        {showTouch && (
-          <div className="fixed inset-0 bg-gradient-to-br from-primary/20 to-secondary/20 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-            <div className="space-y-8 text-center">
-              <div className="relative w-64 h-64 mx-auto">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full opacity-20 pulse-soft" />
-                <div
-                  className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full transition-opacity duration-300"
-                  style={{ opacity: touchProgress / 200 }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Heart className="w-24 h-24 text-white sparkle" fill="currentColor" />
-                </div>
-              </div>
+              
               <div className="space-y-4">
-                <p className="text-2xl font-bold text-foreground">
-                  ضعي يدك على الشاشة... 💗
+                <p className="text-white text-2xl font-bold flex items-center justify-center gap-2">
+                  {isDetecting && <Loader2 className="animate-spin" />}
+                  {detectionMessage}
                 </p>
-                <div className="w-64 h-4 bg-muted rounded-full mx-auto overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-300"
-                    style={{ width: `${touchProgress}%` }}
-                  />
-                </div>
-                <p className="text-lg text-muted-foreground">{Math.round(touchProgress)}%</p>
+                
+                <Button
+                  onClick={stopCamera}
+                  variant="outline"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  إلغاء
+                </Button>
               </div>
             </div>
           </div>
