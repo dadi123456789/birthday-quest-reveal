@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://dadi123456789.github.io/birthday-quest-reveal/",
   "scripts": {
+    "deploy": "vite build && gh-pages -d dist",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
