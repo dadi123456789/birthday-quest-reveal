@@ -1,93 +1,97 @@
-import { useState, useEffect } from "react";
-import { Heart, Star, Circle, Square, Triangle, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Star, Zap, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
 interface SequenceGameProps {
   onComplete: () => void;
 }
 
-type CardIcon = {
-  id: number;
-  icon: typeof Heart;
-  color: string;
+type Position = {
+  top: number;
+  left: number;
 };
 
 const SequenceGame = ({ onComplete }: SequenceGameProps) => {
-  const [cards, setCards] = useState<CardIcon[]>([]);
-  const [flippedCards, setFlippedCards] = useState<number[]>([]);
-  const [matchedCards, setMatchedCards] = useState<number[]>([]);
-  const [moves, setMoves] = useState(0);
-  const [isChecking, setIsChecking] = useState(false);
-
-  const icons = [
-    { icon: Heart, color: "text-red-500" },
-    { icon: Star, color: "text-yellow-500" },
-    { icon: Circle, color: "text-blue-500" },
-    { icon: Square, color: "text-green-500" },
-    { icon: Triangle, color: "text-purple-500" },
-    { icon: Sparkles, color: "text-pink-500" },
-  ];
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [starPosition, setStarPosition] = useState<Position>({ top: 50, left: 50 });
+  const [showStar, setShowStar] = useState(false);
+  const targetScore = 15;
+  const gameAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    initializeGame();
-  }, []);
+    if (!isPlaying) return;
 
-  const initializeGame = () => {
-    const gameIcons = icons.slice(0, 6);
-    const duplicatedCards = [...gameIcons, ...gameIcons].map((item, index) => ({
-      id: index,
-      icon: item.icon,
-      color: item.color,
-    }));
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setIsPlaying(false);
+          if (score >= targetScore) {
+            toast.success("مذهل! لقد فزت! 🎉");
+            setTimeout(onComplete, 1500);
+          } else {
+            toast.error("حاولي مرة أخرى! 💪");
+            resetGame();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isPlaying, score, onComplete]);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const moveInterval = setInterval(() => {
+      moveStarToRandomPosition();
+    }, 1500);
+
+    return () => clearInterval(moveInterval);
+  }, [isPlaying]);
+
+  const moveStarToRandomPosition = () => {
+    if (!gameAreaRef.current) return;
     
-    // Shuffle cards
-    const shuffled = duplicatedCards.sort(() => Math.random() - 0.5);
-    setCards(shuffled);
-    setFlippedCards([]);
-    setMatchedCards([]);
-    setMoves(0);
+    const container = gameAreaRef.current;
+    const maxX = container.clientWidth - 60;
+    const maxY = container.clientHeight - 60;
+    
+    const newTop = Math.random() * maxY;
+    const newLeft = Math.random() * maxX;
+    
+    setStarPosition({ top: newTop, left: newLeft });
+    setShowStar(true);
   };
 
-  const handleCardClick = (cardId: number) => {
-    if (isChecking || flippedCards.includes(cardId) || matchedCards.includes(cardId)) {
-      return;
-    }
+  const handleStarClick = () => {
+    if (!isPlaying) return;
+    
+    setScore((prev) => prev + 1);
+    setShowStar(false);
+    toast.success(`رائع! النقاط: ${score + 1}`, { duration: 500 });
+    
+    // Move star immediately after click
+    setTimeout(() => {
+      moveStarToRandomPosition();
+    }, 100);
+  };
 
-    const newFlipped = [...flippedCards, cardId];
-    setFlippedCards(newFlipped);
+  const startGame = () => {
+    setIsPlaying(true);
+    setScore(0);
+    setTimeLeft(30);
+    moveStarToRandomPosition();
+  };
 
-    if (newFlipped.length === 2) {
-      setIsChecking(true);
-      setMoves(moves + 1);
-
-      const [firstId, secondId] = newFlipped;
-      const firstCard = cards.find(c => c.id === firstId);
-      const secondCard = cards.find(c => c.id === secondId);
-
-      if (firstCard?.icon === secondCard?.icon) {
-        // Match found
-        setTimeout(() => {
-          setMatchedCards([...matchedCards, firstId, secondId]);
-          setFlippedCards([]);
-          setIsChecking(false);
-          toast.success("رائع! وجدت زوجاً متطابقاً! 🎉");
-
-          // Check if game is complete
-          if (matchedCards.length + 2 === cards.length) {
-            setTimeout(() => {
-              toast.success("مذهل! أكملت اللعبة! 🌟");
-              setTimeout(onComplete, 1500);
-            }, 500);
-          }
-        }, 800);
-      } else {
-        // No match
-        setTimeout(() => {
-          setFlippedCards([]);
-          setIsChecking(false);
-        }, 1000);
-      }
-    }
+  const resetGame = () => {
+    setIsPlaying(false);
+    setScore(0);
+    setTimeLeft(30);
+    setShowStar(false);
   };
 
   return (
@@ -96,43 +100,66 @@ const SequenceGame = ({ onComplete }: SequenceGameProps) => {
       
       <div className="max-w-4xl w-full space-y-8 relative z-10 animate-fade-in">
         <div className="text-center space-y-4">
-          <Sparkles className="w-16 h-16 text-accent mx-auto pulse-soft" />
-          <h2 className="text-4xl font-bold text-foreground">لعبة الأزواج المتطابقة</h2>
-          <p className="text-lg text-muted-foreground">اعثري على جميع الأزواج المتطابقة</p>
-          <div className="text-sm text-muted-foreground">عدد المحاولات: {moves}</div>
+          <Zap className="w-16 h-16 text-accent mx-auto pulse-soft" />
+          <h2 className="text-4xl font-bold text-foreground">لعبة اصطياد النجوم</h2>
+          <p className="text-lg text-muted-foreground">اصطادي {targetScore} نجمة في 30 ثانية!</p>
         </div>
 
-        <div className="bg-card p-8 rounded-3xl shadow-magical border-2 border-primary/20">
-          <div className="grid grid-cols-4 gap-4 max-w-2xl mx-auto">
-            {cards.map((card) => {
-              const isFlipped = flippedCards.includes(card.id);
-              const isMatched = matchedCards.includes(card.id);
-              const Icon = card.icon;
-
-              return (
-                <button
-                  key={card.id}
-                  onClick={() => handleCardClick(card.id)}
-                  disabled={isChecking || isFlipped || isMatched}
-                  className={`
-                    aspect-square rounded-2xl transition-all duration-300 transform
-                    ${isMatched ? 'bg-green-500/20 scale-95' : isFlipped ? 'bg-primary/10' : 'bg-muted hover:bg-muted/80'}
-                    ${!isMatched && !isFlipped ? 'hover:scale-105' : ''}
-                    disabled:cursor-not-allowed
-                    flex items-center justify-center
-                    border-2 ${isMatched ? 'border-green-500/50' : 'border-border'}
-                  `}
-                >
-                  {(isFlipped || isMatched) && (
-                    <Icon className={`w-12 h-12 ${card.color} animate-scale-in`} />
-                  )}
-                  {!isFlipped && !isMatched && (
-                    <div className="w-12 h-12 bg-primary/20 rounded-lg" />
-                  )}
-                </button>
-              );
-            })}
+        <div className="bg-card p-8 rounded-3xl shadow-magical border-2 border-primary/20 space-y-6">
+          <div className="flex justify-around items-center text-center">
+            <div className="space-y-2">
+              <Trophy className="w-8 h-8 text-yellow-500 mx-auto" />
+              <div className="text-3xl font-bold text-foreground">{score}</div>
+              <div className="text-sm text-muted-foreground">النقاط</div>
+            </div>
+            <div className="space-y-2">
+              <Star className="w-8 h-8 text-primary mx-auto" />
+              <div className="text-3xl font-bold text-foreground">{timeLeft}</div>
+              <div className="text-sm text-muted-foreground">ثانية</div>
+            </div>
           </div>
+
+          {!isPlaying ? (
+            <div className="text-center py-12">
+              <button
+                onClick={startGame}
+                className="px-8 py-4 bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-2xl font-bold text-lg hover:scale-105 transition-transform shadow-lg"
+              >
+                ابدأي اللعبة! 🚀
+              </button>
+            </div>
+          ) : (
+            <div 
+              ref={gameAreaRef}
+              className="relative w-full h-96 bg-muted/30 rounded-2xl overflow-hidden cursor-crosshair"
+            >
+              {showStar && (
+                <button
+                  onClick={handleStarClick}
+                  style={{
+                    position: 'absolute',
+                    top: `${starPosition.top}px`,
+                    left: `${starPosition.left}px`,
+                  }}
+                  className="w-12 h-12 animate-bounce transition-all duration-300 hover:scale-125"
+                >
+                  <Star 
+                    className="w-full h-full text-yellow-400 drop-shadow-glow" 
+                    fill="currentColor"
+                  />
+                </button>
+              )}
+            </div>
+          )}
+
+          {isPlaying && (
+            <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-primary to-secondary h-full transition-all duration-1000"
+                style={{ width: `${(score / targetScore) * 100}%` }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
