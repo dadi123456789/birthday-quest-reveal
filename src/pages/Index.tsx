@@ -6,7 +6,6 @@ import PuzzleGame from "@/components/games/PuzzleGame";
 import QuizGame from "@/components/games/QuizGame";
 import WordArrangementGame from "@/components/games/WordArrangementGame";
 import LogicPuzzleGame from "@/components/games/LogicPuzzleGame";
-import SequenceGame from "@/components/games/SequenceGame";
 import MathPuzzleGame from "@/components/games/MathPuzzleGame";
 import PatternRecognitionGame from "@/components/games/PatternRecognitionGame";
 import GiftBox from "./GiftBox";
@@ -41,8 +40,6 @@ type Stage =
   | "message7"
   | "game7"
   | "message8"
-  | "game8"
-  | "message9"
   | "giftbox"
   | "treasuremap"
   | "finalgift";
@@ -68,8 +65,6 @@ const Index = () => {
       "message7",
       "game7",
       "message8",
-      "game8",
-      "message9",
       "giftbox",
       "treasuremap",
       "finalgift",
@@ -106,16 +101,12 @@ const Index = () => {
       {currentStage === "message6" && (
         <MessageScreen message={messages[5]} onContinue={nextStage} />
       )}
-      {currentStage === "game6" && <SequenceGame onComplete={nextStage} />}
+      {currentStage === "game6" && <MathPuzzleGame onComplete={nextStage} />}
       {currentStage === "message7" && (
         <MessageScreen message={messages[6]} onContinue={nextStage} />
       )}
-      {currentStage === "game7" && <MathPuzzleGame onComplete={nextStage} />}
+      {currentStage === "game7" && <PatternRecognitionGame onComplete={nextStage} />}
       {currentStage === "message8" && (
-        <MessageScreen message={messages[7]} onContinue={nextStage} />
-      )}
-      {currentStage === "game8" && <PatternRecognitionGame onComplete={nextStage} />}
-      {currentStage === "message9" && (
         <MessageScreen message={messages[7]} onContinue={nextStage} />
       )}
       {currentStage === "giftbox" && <GiftBox onUnlock={nextStage} />}
